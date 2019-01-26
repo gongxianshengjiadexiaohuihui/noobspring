@@ -2,6 +2,8 @@ package com.ggp.framework.servlet;
 
 import com.ggp.common.util.StringUtil;
 import com.ggp.framework.annotation.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -24,6 +26,11 @@ import java.util.*;
  * @Description:
  */
 public class NBDispatcherServlet extends HttpServlet {
+
+    private Logger logger = LoggerFactory.getLogger(this.getClass());
+
+
+
     private static final long serialVersionUID = 1L;
     /**
      * 配置文件的位置 classpath:application.properties
@@ -52,6 +59,7 @@ public class NBDispatcherServlet extends HttpServlet {
 
     @Override
     public void init(ServletConfig config) throws ServletException {
+        logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>开始初始化noobspring");
         /**
          * 加载配置文件 config来自父类
          */
@@ -72,27 +80,36 @@ public class NBDispatcherServlet extends HttpServlet {
          * 构造handlerMapping
          */
         initHandlerMapping();
+        logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>初始化noobspring完成");
     }
     private void doLoadConfig(String path){
+        logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>初始化配置文件");
+        /**
+         * 先把classpath:剥离，后续在添加内容
+         */
+        String[] str = path.split(":");
         InputStream fis = null;
         try {
-            fis = this.getClass().getClassLoader().getResourceAsStream(path);
+            fis = this.getClass().getClassLoader().getResourceAsStream(str[1]);
             p.load(fis);
         }catch (Exception e){
             e.printStackTrace();
+            logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>初始化配置文件失败");
         }finally {
             if(null != fis){
                 try {
                     fis.close();
                 } catch (IOException e) {
                     e.printStackTrace();
+
                 }
             }
         }
 
-
+      logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>初始化配置文件成功");
     }
     private void doScanner(String packageName){
+        logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>开始扫描类");
         URL url = this.getClass().getClassLoader().getResource("/"+packageName.replaceAll("\\.","/"));
         File dir = new File(url.getFile());
         for(File file: dir.listFiles()){
@@ -103,10 +120,11 @@ public class NBDispatcherServlet extends HttpServlet {
             }
 
         }
-
-
+       logger.info("扫描到的类：{}",classNames.toString());
+       logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>扫描成功");
     }
     private void doInstance(){
+        logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>开始实例化");
         if(classNames.size() == 0){
             return;
         }
@@ -141,10 +159,14 @@ public class NBDispatcherServlet extends HttpServlet {
                 }
             }
         }catch (Exception e){
+            logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>实例化失败");
             e.printStackTrace();
         }
+        logger.info("实例化的类:{}",ioc.keySet().toString());
+        logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>实例化成功");
     }
     private void doAutowired(){
+        logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>开始注入");
         if(ioc.isEmpty()){
             return;
         }
@@ -170,12 +192,15 @@ public class NBDispatcherServlet extends HttpServlet {
                      */
                     field.set(entry.getValue(),ioc.get(beanName));
                 } catch (Exception e) {
+                    logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>注入失败");
                     e.printStackTrace();
                 }
             }
+            logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>注入完成");
         }
     }
     private void initHandlerMapping(){
+        logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>开始关联映射");
         if(ioc.isEmpty()){
             return;
         }
@@ -205,13 +230,16 @@ public class NBDispatcherServlet extends HttpServlet {
                 System.out.println("mapped" + url + "," + method);
             }
         }
+        logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>关联映射完成");
     }
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         try {
             this.doDispatch(req, resp);
         } catch (Exception e) {
+            resp.getWriter().write("500 Exception,Detail:\r\n" +e.getMessage() + "\r\n" + Arrays.toString(e.getStackTrace()).replaceAll("\\[|\\]","").replaceAll(",\\s","\r\n"));
             e.printStackTrace();
+
         }
     }
 
@@ -220,7 +248,8 @@ public class NBDispatcherServlet extends HttpServlet {
         try {
             doDispatch(req, resp);
         }catch (Exception e){
-            resp.getWriter().write("500 Exception,Detail:\r\n" + Arrays.toString(e.getStackTrace()).replaceAll("\\[|\\]","").replaceAll(",\\s","\r\n"));
+            resp.getWriter().write("500 Exception,Detail:\r\n" +e.getMessage() + "\r\n" + Arrays.toString(e.getStackTrace()).replaceAll("\\[|\\]","").replaceAll(",\\s","\r\n"));
+            System.out.println(e.getMessage());
         }
     }
     private void doDispatch(HttpServletRequest req, HttpServletResponse resp) throws Exception{
@@ -253,12 +282,6 @@ public class NBDispatcherServlet extends HttpServlet {
          */
         Parameter[] parameters = method.getParameters();
         Annotation annotation[][] = method.getParameterAnnotations();
-        for(int i = 0; i < annotation.length; i++){
-            if(annotation[i].length!=0&&annotation[i][0].annotationType() == NBRequestParam.class){
-                System.out.println("***");
-            }
-        }
-
         /**
          * 保存参数值
          */
@@ -286,6 +309,9 @@ public class NBDispatcherServlet extends HttpServlet {
                      * 类型转换，猜测里面存的值应该是一个注解的泛型
                      */
                     name = ((NBRequestParam)annotation[i][0]).value();
+                    if(!params.containsKey(name)){
+                        throw new RuntimeException("The required parameter does not exist!   " + name );
+                    }
                 }
                 paramValues[i] = params.get(name)[0];
                 continue;

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true" scanPeriod="5 seconds">
+    <!--日志文件的名称，根据系统自动追加日期和后缀-->
+    <property name="LOG_FILE_NAME" value="noobspring"/>
+    <!-- 控制台输出，开发调试可以在下文root中添加项-->
+    <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
+        <layout class="ch.qos.logback.classic.PatternLayout">
+            <pattern>%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ}|${LOG_FILE_NAME}|%-5level|%logger{50}[%L]|%msg%n</pattern>
+        </layout>
+    </appender>
+    <!-- 每天生成一个日志文件 -->
+    <appender name="logfile" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!--日志文件输出的文件路径和文件名，不要修改-->
+            <fileNamePattern>../home/logs/${LOG_FILE_NAME}/${LOG_FILE_NAME}_%d{yyyy-MM-ddZ}_%i.log</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <!--日志文件最大数量-->
+            <maxHistory>100</maxHistory>
+        </rollingPolicy>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <!--格式化输出：%d表示日期，%thread表示线程名，%-5level：级别从左显示5个字符宽度%msg：日志消息，%n是换行符-->
+            <pattern>%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ}|${LOG_FILE_NAME}|%-5level|%logger{50}[%L]|%msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="com.ggp" level="INFO"/>
+
+    <root level="INFO">
+        <appender-ref ref="logfile"/>
+        <appender-ref ref="stdout"/>
+    </root>
+</configuration>
