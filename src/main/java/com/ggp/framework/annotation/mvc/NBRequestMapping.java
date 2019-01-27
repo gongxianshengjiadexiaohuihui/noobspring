@@ -1,4 +1,4 @@
-package com.ggp.framework.annotation;
+package com.ggp.framework.annotation.mvc;
 
 import java.lang.annotation.*;
 /**
@@ -6,9 +6,9 @@ import java.lang.annotation.*;
  * @Date:2019/1/21 16 04
  * @Description:
  */
-@Target({ElementType.PARAMETER})
+@Target({ElementType.TYPE,ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-public @interface NBRequestParam {
+public @interface NBRequestMapping {
     String value() default "";
 }

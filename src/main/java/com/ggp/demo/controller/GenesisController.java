@@ -1,10 +1,10 @@
 package com.ggp.demo.controller;
 
 import com.ggp.demo.service.DemoService;
-import com.ggp.framework.annotation.NBAutowired;
-import com.ggp.framework.annotation.NBController;
-import com.ggp.framework.annotation.NBRequestMapping;
-import com.ggp.framework.annotation.NBRequestParam;
+import com.ggp.framework.annotation.mvc.NBAutowired;
+import com.ggp.framework.annotation.mvc.NBController;
+import com.ggp.framework.annotation.mvc.NBRequestMapping;
+import com.ggp.framework.annotation.mvc.NBRequestParam;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;

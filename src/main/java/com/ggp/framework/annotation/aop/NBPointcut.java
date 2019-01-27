@@ -1,14 +1,15 @@
-package com.ggp.framework.annotation;
+package com.ggp.framework.annotation.aop;
 
 import java.lang.annotation.*;
+
 /**
  * @Author:ggp
- * @Date:2019/1/21 16 04
+ * @Date:2019/1/26 14 40
  * @Description:
  */
-@Target({ElementType.TYPE})
+@Target({ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-public @interface NBService {
+public @interface NBPointcut {
     String value() default "";
 }

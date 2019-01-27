@@ -1,7 +1,7 @@
 package com.ggp.demo.service.impl;
 
 import com.ggp.demo.service.DemoService;
-import com.ggp.framework.annotation.NBService;
+import com.ggp.framework.annotation.mvc.NBService;
 
 /**
  * @Author:ggp

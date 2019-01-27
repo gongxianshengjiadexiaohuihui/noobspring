@@ -1,7 +1,10 @@
 package com.ggp.framework.servlet;
 
-import com.ggp.common.util.StringUtil;
-import com.ggp.framework.annotation.*;
+import com.ggp.framework.Proxy.JDKProxy;
+import com.ggp.framework.annotation.aop.NBAspect;
+import com.ggp.framework.annotation.aop.NBPointcut;
+import com.ggp.framework.common.util.StringUtil;
+import com.ggp.framework.annotation.mvc.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,6 +76,10 @@ public class NBDispatcherServlet extends HttpServlet {
          */
         doInstance();
         /**
+         * 织入切点
+         */
+        doAspect();
+        /**
          * 依赖注入
          */
         doAutowired();
@@ -143,7 +150,8 @@ public class NBDispatcherServlet extends HttpServlet {
                      */
                     String beanName = clazz.getAnnotation(NBService.class).value();
                     if(!"".equals(beanName.trim())){
-                        ioc.put(StringUtil.lowerFirstCase(beanName), clazz.newInstance());
+                        beanName = StringUtil.lowerFirstCase(beanName);
+                        ioc.put(beanName , clazz.newInstance());
                         continue;
                     }
                     /**
@@ -151,8 +159,15 @@ public class NBDispatcherServlet extends HttpServlet {
                      */
                     Class<?>[] interfaces = clazz.getInterfaces();
                     for(Class<?> tamp : interfaces){
-                        ioc.put(StringUtil.lowerFirstCase(tamp.getSimpleName()), clazz.newInstance());
+                        String tampName = StringUtil.lowerFirstCase(tamp.getSimpleName());
+                        ioc.put(tampName, clazz.newInstance());
                     }
+
+                }else if(clazz.isAnnotationPresent(NBComponent.class)){
+                    String beanName = StringUtil.lowerFirstCase(clazz.getSimpleName());
+                    ioc.put(beanName,clazz.newInstance());
+                }else if(clazz.isAnnotationPresent(NBAspect.class)){
+
 
                 }else{
                     return;
@@ -164,6 +179,57 @@ public class NBDispatcherServlet extends HttpServlet {
         }
         logger.info("实例化的类:{}",ioc.keySet().toString());
         logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>实例化成功");
+    }
+
+    /**
+     * 动态代理部分
+     */
+    private void doAspect(){
+        if(ioc.size() == 0){
+            return;
+        }
+        try {
+
+            for (Object obj : ioc.values()) {
+                Class<?> clazz = obj.getClass();
+                if (clazz.isAnnotationPresent(NBAspect.class)) {
+                    Method[] methods = clazz.getMethods();
+                    for (Method method : methods) {
+                        System.out.println(method.toString());
+                        if (method.isAnnotationPresent(NBPointcut.class)) {
+                            String beanName = StringUtil.getNameByMethod(method.getAnnotation(NBPointcut.class).value());
+                            String[] str = beanName.split("\\.");
+                            String simpleName = StringUtil.lowerFirstCase(str[str.length - 1]);
+                            if (ioc.containsKey(simpleName)) {
+                                ioc.remove(simpleName);
+                                JDKProxy proxy = new JDKProxy();
+                                ioc.put(simpleName, proxy.bind(Class.forName(beanName).newInstance(), clazz.newInstance()));
+                            }else{
+                                /**
+                                 * 不包含，说明ioc里的key放的是接口名，因此获取所有接口
+                                 */
+                                Class <?>[] interfaces = Class.forName(beanName).getInterfaces();
+                                for(Class<?> cl : interfaces){
+                                    String tampName = StringUtil.lowerFirstCase(cl.getSimpleName());
+                                    if(ioc.containsKey(tampName)){
+                                        ioc.remove(tampName);
+                                        JDKProxy proxy = new JDKProxy();
+                                        ioc.put(tampName,proxy.bind(Class.forName(beanName).newInstance(),clazz.newInstance()));
+                                    }
+                                }
+                            }
+
+
+                        }
+                    }
+
+
+                }
+
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
     }
     private void doAutowired(){
         logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>开始注入");
@@ -290,7 +356,6 @@ public class NBDispatcherServlet extends HttpServlet {
          * 根据形参列表，按顺序获取请求参数列表的值
          */
         for(int i =0; i < parameters.length; i++){
-            System.out.println(parameters[i].getType());
             if(parameters[i].getType() == HttpServletRequest.class){
                 paramValues[i] = req;
                 continue;
