@@ -12,6 +12,7 @@ import com.ggp.framework.annotation.mvc.NBService;
 public class DemoServiceImpl implements DemoService {
     public String genesis(String key) {
         if("ggp".equals(key)) {
+            System.out.println("hello world");
             return "Hello world";
         }else{
             return "The key is error";

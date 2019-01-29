@@ -1,5 +1,6 @@
 package com.ggp.framework.servlet;
 
+import com.ggp.framework.Proxy.CglibProxy;
 import com.ggp.framework.Proxy.JDKProxy;
 import com.ggp.framework.annotation.aop.NBAspect;
 import com.ggp.framework.annotation.aop.NBPointcut;
@@ -46,6 +47,7 @@ public class NBDispatcherServlet extends HttpServlet {
     /**
      * 保存所有被扫描到的类名
      */
+
     private List<String> classNames = new ArrayList<String>();
     /**
      * IOC容器，保存所有初始化的bean
@@ -63,6 +65,7 @@ public class NBDispatcherServlet extends HttpServlet {
     @Override
     public void init(ServletConfig config) throws ServletException {
         logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>开始初始化noobspring");
+        try{
         /**
          * 加载配置文件 config来自父类
          */
@@ -70,7 +73,12 @@ public class NBDispatcherServlet extends HttpServlet {
         /**
          * 扫描相关的类 （从配置文件中读取扫描包的范围）把扫描到的类名保存到className中
          */
+        logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>开始扫描类");
+
         doScanner(p.getProperty("scanPackage"));
+
+        logger.debug("扫描到的类：{}",classNames.toString());
+        logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>扫描成功");
         /**
          * 通过反射初始化className中的所有类，保存到ioc容器中（ioc容器的key默认是类名字母小写）
          */
@@ -87,6 +95,12 @@ public class NBDispatcherServlet extends HttpServlet {
          * 构造handlerMapping
          */
         initHandlerMapping();
+        }catch (Exception e){
+            logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>初始化noobspring失败");
+            e.printStackTrace();
+            throw e;
+
+        }
         logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>初始化noobspring完成");
     }
     private void doLoadConfig(String path){
@@ -100,8 +114,9 @@ public class NBDispatcherServlet extends HttpServlet {
             fis = this.getClass().getClassLoader().getResourceAsStream(str[1]);
             p.load(fis);
         }catch (Exception e){
+            logger.error(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>初始化配置文件失败");
             e.printStackTrace();
-            logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>初始化配置文件失败");
+            throw new RuntimeException("初始化配置文件失败");
         }finally {
             if(null != fis){
                 try {
@@ -116,7 +131,6 @@ public class NBDispatcherServlet extends HttpServlet {
       logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>初始化配置文件成功");
     }
     private void doScanner(String packageName){
-        logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>开始扫描类");
         URL url = this.getClass().getClassLoader().getResource("/"+packageName.replaceAll("\\.","/"));
         File dir = new File(url.getFile());
         for(File file: dir.listFiles()){
@@ -127,8 +141,6 @@ public class NBDispatcherServlet extends HttpServlet {
             }
 
         }
-       logger.info("扫描到的类：{}",classNames.toString());
-       logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>扫描成功");
     }
     private void doInstance(){
         logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>开始实例化");
@@ -170,14 +182,15 @@ public class NBDispatcherServlet extends HttpServlet {
 
 
                 }else{
-                    return;
+                    continue;
                 }
             }
         }catch (Exception e){
-            logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>实例化失败");
+            logger.error(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>实例化失败");
             e.printStackTrace();
+            throw new RuntimeException("实例化失败");
         }
-        logger.info("实例化的类:{}",ioc.keySet().toString());
+        logger.debug("实例化的类:{}",ioc.keySet().toString());
         logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>实例化成功");
     }
 
@@ -185,40 +198,48 @@ public class NBDispatcherServlet extends HttpServlet {
      * 动态代理部分
      */
     private void doAspect(){
+        logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>开始织入通知");
         if(ioc.size() == 0){
             return;
         }
         try {
-
             for (Object obj : ioc.values()) {
                 Class<?> clazz = obj.getClass();
                 if (clazz.isAnnotationPresent(NBAspect.class)) {
                     Method[] methods = clazz.getMethods();
                     for (Method method : methods) {
-                        System.out.println(method.toString());
                         if (method.isAnnotationPresent(NBPointcut.class)) {
+                            logger.debug("切点方法：{}",method.toString());
                             String beanName = StringUtil.getNameByMethod(method.getAnnotation(NBPointcut.class).value());
                             String[] str = beanName.split("\\.");
                             String simpleName = StringUtil.lowerFirstCase(str[str.length - 1]);
-                            if (ioc.containsKey(simpleName)) {
-                                ioc.remove(simpleName);
-                                JDKProxy proxy = new JDKProxy();
-                                ioc.put(simpleName, proxy.bind(Class.forName(beanName).newInstance(), clazz.newInstance()));
-                            }else{
+                            Class <?>[] interfaces = Class.forName(beanName).getInterfaces();
+                            if(interfaces.length == 0) {
                                 /**
-                                 * 不包含，说明ioc里的key放的是接口名，因此获取所有接口
+                                 * 没有接口，所以用cglib动态代理
                                  */
-                                Class <?>[] interfaces = Class.forName(beanName).getInterfaces();
-                                for(Class<?> cl : interfaces){
-                                    String tampName = StringUtil.lowerFirstCase(cl.getSimpleName());
-                                    if(ioc.containsKey(tampName)){
-                                        ioc.remove(tampName);
-                                        JDKProxy proxy = new JDKProxy();
-                                        ioc.put(tampName,proxy.bind(Class.forName(beanName).newInstance(),clazz.newInstance()));
+                                CglibProxy cglibProxy = new CglibProxy();
+                                ioc.put(simpleName,cglibProxy.getProxy(Class.forName(beanName),clazz.newInstance()));
+                            }else {
+                                /**
+                                 * 有接口，所以用jdk动态代理
+                                 */
+                                if (ioc.containsKey(simpleName)) {
+                                    JDKProxy proxy = new JDKProxy();
+                                    ioc.put(simpleName, proxy.bind(Class.forName(beanName).newInstance(), clazz.newInstance()));
+                                } else {
+                                    /**
+                                     * 不包含，说明ioc里的key放的是接口名，因此获取所有接口
+                                     */
+                                    for (Class<?> cl : interfaces) {
+                                        String tampName = StringUtil.lowerFirstCase(cl.getSimpleName());
+                                        if (ioc.containsKey(tampName)) {
+                                            JDKProxy proxy = new JDKProxy();
+                                            ioc.put(tampName, proxy.bind(Class.forName(beanName).newInstance(), clazz.newInstance()));
+                                        }
                                     }
                                 }
                             }
-
 
                         }
                     }
@@ -228,8 +249,12 @@ public class NBDispatcherServlet extends HttpServlet {
 
             }
         }catch (Exception e){
+            logger.error(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>织入通知失败");
             e.printStackTrace();
+            throw new RuntimeException("织入通知失败");
+
         }
+        logger.error(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>织入通知成功");
     }
     private void doAutowired(){
         logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>开始注入");
@@ -258,12 +283,14 @@ public class NBDispatcherServlet extends HttpServlet {
                      */
                     field.set(entry.getValue(),ioc.get(beanName));
                 } catch (Exception e) {
-                    logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>注入失败");
+                    logger.error(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>注入失败");
                     e.printStackTrace();
+                    throw new RuntimeException("注入失败");
                 }
             }
-            logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>注入完成");
+
         }
+        logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>注入完成");
     }
     private void initHandlerMapping(){
         logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>开始关联映射");
@@ -293,7 +320,7 @@ public class NBDispatcherServlet extends HttpServlet {
                  */
                 String url = ("/" + baseUrl + "/" + method.getAnnotation(NBRequestMapping.class).value()).replaceAll("/+","/");
                 handlerMapping.put(url,method);
-                System.out.println("mapped" + url + "," + method);
+                logger.debug("mapped:{},{}",url,method);
             }
         }
         logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>关联映射完成");

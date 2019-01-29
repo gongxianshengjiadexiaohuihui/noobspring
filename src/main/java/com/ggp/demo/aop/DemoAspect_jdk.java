@@ -10,7 +10,7 @@ import com.ggp.framework.annotation.mvc.NBComponent;
  */
 @NBAspect
 @NBComponent
-public class DemoAspect {
+public class DemoAspect_jdk {
 
     @NBPointcut(value = "com.ggp.demo.service.impl.DemoServiceImpl.genesis")
     public void print(){
