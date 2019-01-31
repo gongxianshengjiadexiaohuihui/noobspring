@@ -15,19 +15,19 @@ public class DemoAspect_cglib {
     public void print(){
 
     };
-    @NBBefore(value = "print")
-    public void before(){
-        System.out.println("aspect>>>>>>>>before");
+    @NBBefore
+    public void before(String key){
+        System.out.println("aspect>>>>>>>>before" + key);
     }
-    @NBAfter(value = "print")
+    @NBAfter
     public void after(){
         System.out.println("aspect>>>>>>>>after");
     };
-    @NBAfterReturn(value = "print")
+    @NBAfterReturn
     public void afterReturning(){
         System.out.println("aspect>>>>>>>>afterReturning");
     }
-    @NBAfterThrowing(value = "print")
+    @NBAfterThrowing
     public void afterThrowing(){
         System.out.println("aspect>>>>>>>>afterThrowing");
     }

@@ -1,7 +1,7 @@
 package com.ggp.framework.servlet;
 
-import com.ggp.framework.Proxy.CglibProxy;
-import com.ggp.framework.Proxy.JDKProxy;
+import com.ggp.framework.proxy.CglibProxy;
+import com.ggp.framework.proxy.JDKProxy;
 import com.ggp.framework.annotation.aop.NBAspect;
 import com.ggp.framework.annotation.aop.NBPointcut;
 import com.ggp.framework.common.util.StringUtil;
