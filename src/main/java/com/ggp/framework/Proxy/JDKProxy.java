@@ -1,4 +1,4 @@
-package com.ggp.framework.Proxy;
+package com.ggp.framework.proxy;
 
 import com.ggp.demo.aop.DemoAspect_jdk;
 import com.ggp.demo.service.DemoService;
@@ -8,9 +8,10 @@ import com.ggp.framework.common.util.StringUtil;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.lang.reflect.Proxy;
+import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Set;
 
 /**
  * @Author:ggp
@@ -68,14 +69,16 @@ public class JDKProxy implements InvocationHandler {
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        /**
+         *保存拦截方法的形参列表，判断有无参数
+         */
+        Parameter[] parameters;
         String methodName = StringUtil.getMethodName(method.toString());
         Object obj;
         /**
          * 如果不是切点，不织入通知
          */
         if(!points.contains(methodName)){
-            System.out.println(methodName);
-            System.out.println(points.toString());
             obj = method.invoke(target,args);
             /**
              * 粗心在这里忘记返回了，导致逻辑继续执行
@@ -84,22 +87,27 @@ public class JDKProxy implements InvocationHandler {
         }
 
         if(before != null){
-            before.invoke(aspect,null);
+                parameters = before.getParameters();
+                before.invoke(aspect, parameters.length == 0?null:args);
+
         }
         try{
              obj = method.invoke(target,args);
         }catch (Exception e){
             if(afterThrowing != null){
-                afterThrowing.invoke(aspect,null);
+                parameters = afterThrowing.getParameters();
+                afterThrowing.invoke(aspect, parameters.length == 0?null:args);
             }
             throw e;
         }finally {
             if(after != null){
-                after.invoke(aspect,null);
+                parameters = after.getParameters();
+                after.invoke(aspect, parameters.length == 0?null:args);
             }
         }
         if(afterReturn != null){
-            afterReturn.invoke(aspect,null);
+            parameters = afterReturn.getParameters();
+            afterReturn.invoke(aspect, parameters.length == 0?null:args);
         }
         return obj;
     }

@@ -1,5 +1,7 @@
-package com.ggp.framework.Proxy;
+package com.ggp.framework.proxy;
 
+import com.ggp.demo.aop.DemoAspect_cglib;
+import com.ggp.demo.service.impl.CglibTest;
 import com.ggp.framework.annotation.aop.*;
 import com.ggp.framework.common.util.StringUtil;
 import net.sf.cglib.proxy.Enhancer;
@@ -7,6 +9,7 @@ import net.sf.cglib.proxy.MethodInterceptor;
 import net.sf.cglib.proxy.MethodProxy;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -87,35 +90,54 @@ public class CglibProxy implements MethodInterceptor {
      */
     @Override
     public Object intercept(Object o, Method method, Object[] objects, MethodProxy methodProxy) throws Throwable {
+        /**
+         *保存拦截方法的形参列表，判断有无参数
+         */
+        Parameter[] parameters;
         String methodName = StringUtil.getMethodName(method.toString());
         Object obj;
         /**
          * 如果不是切点，不织入通知
          */
         if(!points.contains(methodName)){
-           obj = methodProxy.invokeSuper(o,objects);
-           return obj;
+            obj = methodProxy.invokeSuper(o,objects);
+            /**
+             * 粗心在这里忘记返回了，导致逻辑继续执行
+             */
+            return  obj;
         }
 
         if(before != null){
-            before.invoke(aspect,null);
+            parameters = before.getParameters();
+            before.invoke(aspect, parameters.length == 0?null:objects);
+
         }
         try{
             obj = methodProxy.invokeSuper(o,objects);
         }catch (Exception e){
             if(afterThrowing != null){
-                afterThrowing.invoke(aspect,null);
+                parameters = afterThrowing.getParameters();
+                afterThrowing.invoke(aspect, parameters.length == 0?null:objects);
             }
             throw e;
         }finally {
             if(after != null){
-                after.invoke(aspect,null);
+                parameters = after.getParameters();
+                after.invoke(aspect, parameters.length == 0?null:objects);
             }
         }
         if(afterReturn != null){
-            afterReturn.invoke(aspect,null);
+            parameters = afterReturn.getParameters();
+            afterReturn.invoke(aspect, parameters.length == 0?null:objects);
         }
         return obj;
+
+    }
+
+    public static void main(String[] args) {
+        CglibProxy cglibProxy = new CglibProxy();
+        CglibTest cglibTest = (CglibTest) cglibProxy.getProxy(CglibTest.class,new DemoAspect_cglib());
+        cglibTest.hi("ggp");
 
     }
 
