@@ -336,15 +336,6 @@ public class NBDispatcherServlet extends HttpServlet {
         }
     }
 
-    @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        try {
-            doDispatch(req, resp);
-        }catch (Exception e){
-            resp.getWriter().write("500 Exception,Detail:\r\n" +e.getMessage() + "\r\n" + Arrays.toString(e.getStackTrace()).replaceAll("\\[|\\]","").replaceAll(",\\s","\r\n"));
-            System.out.println(e.getMessage());
-        }
-    }
     private void doDispatch(HttpServletRequest req, HttpServletResponse resp) throws Exception{
         if(handlerMapping.isEmpty()){
             return;
