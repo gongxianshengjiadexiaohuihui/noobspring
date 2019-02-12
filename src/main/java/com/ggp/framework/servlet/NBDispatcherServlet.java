@@ -131,7 +131,7 @@ public class NBDispatcherServlet extends HttpServlet {
       logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>初始化配置文件成功");
     }
     private void doScanner(String packageName){
-        URL url = this.getClass().getClassLoader().getResource("/"+packageName.replaceAll("\\.","/"));
+        URL url = this.getClass().getClassLoader().getResource(packageName.replaceAll("\\.","/"));
         File dir = new File(url.getFile());
         for(File file: dir.listFiles()){
             if(file.isDirectory()){
