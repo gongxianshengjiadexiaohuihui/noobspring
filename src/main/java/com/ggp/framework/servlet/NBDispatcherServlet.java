@@ -108,10 +108,9 @@ public class NBDispatcherServlet extends HttpServlet {
         /**
          * 先把classpath:剥离，后续在添加内容
          */
-        String[] str = path.split(":");
         InputStream fis = null;
         try {
-            fis = this.getClass().getClassLoader().getResourceAsStream(str[1]);
+            fis = this.getClass().getClassLoader().getResourceAsStream(path.replace("classpath:",""));
             p.load(fis);
         }catch (Exception e){
             logger.error(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>初始化配置文件失败");
